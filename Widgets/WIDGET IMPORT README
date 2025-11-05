@@ -1,0 +1,6 @@
+WIDGET IMPORT TUTORIAL
+To import widget to bar, simply open BAR folder(by default Program Files\Beyond-All-Reason\).
+Enter data\LuaUI\Widgets\
+Simply add here this widget
+In-game press F11, scroll to this widget, and enable it.
+To use it, type in chat /SEDExport
