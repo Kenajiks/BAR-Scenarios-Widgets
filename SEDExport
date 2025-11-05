@@ -1,0 +1,118 @@
+function widget:GetInfo()
+   return {
+      name    = "SEDExport",
+      desc    = "Exports necessary data for Scenario Editor",
+      author  = "Kenajiks",
+      date    = "2025-07-18",
+      license = "GPL",
+      layer   = 999,
+      enabled = true
+   }
+end
+
+local function getTimestampedFilename()
+   local mapname = Game.mapName or "unknownmap"
+   local t = os.date("*t")
+   local filename = string.format("LuaUI/SEDExport/%s_%04d-%02d-%02d_%02d-%02d-%02d.txt", 
+      mapname, t.year, t.month, t.day, t.hour, t.min, t.sec)
+   return filename
+end
+
+local function dumpUnits(file)
+   Spring.Echo("[SEDExport] Dumping all units")
+   local units = Spring.GetAllUnits()
+   file:write("--UNITS--\n")
+   for _, unitID in ipairs(units) do
+      local def = UnitDefs[Spring.GetUnitDefID(unitID)]
+      local name = def and def.name or "nil"
+      local x, y, z = Spring.GetUnitPosition(unitID)
+      local r = Spring.GetUnitHeading(unitID)
+      local team = Spring.GetUnitTeam(unitID)
+      local isneutral = tostring(Spring.GetUnitNeutral(unitID))
+      file:write(string.format(
+         "{name = '%s', x = %d, y = %d, z = %d, rot = %d, team = %d, neutral = %s},\n",
+         name, x, y, z, r, team, isneutral
+      ))
+   end
+end
+
+local function dumpFeatures(file)
+   Spring.Echo("[SEDExport] Dumping all features")
+   local features = Spring.GetAllFeatures()
+   file:write("--FEATURES--\n")
+   for _, featureID in ipairs(features) do
+      local def = FeatureDefs[Spring.GetFeatureDefID(featureID)]
+      local name = def and def.name or "nil"
+      local x, y, z = Spring.GetFeaturePosition(featureID)
+      local r = Spring.GetFeatureHeading(featureID)
+      local resurrectas = Spring.GetFeatureResurrect(featureID)
+      resurrectas = resurrectas and string.format("'%s'", resurrectas) or "nil"
+      file:write(string.format(
+         "{name = '%s', x = %d, y = %d, z = %d, rot = %d, scale = 1.0, resurrectas = %s},\n",
+         name, x, y, z, r, resurrectas
+      ))
+   end
+end
+
+local function isAuthorized(playerID)
+   return true -- możesz tu dodać własne sprawdzanie
+end
+
+function SEDExport()
+   Spring.Echo("[SEDExport] Wywolano SEDExport")
+
+   local playerID = Spring.GetMyPlayerID()
+   if not isAuthorized(playerID) then
+      Spring.Echo("[SEDExport] Nie masz uprawnień.")
+      return
+   end
+
+   Spring.Echo("[SEDExport] Tworzenie katalogu: LuaUI/SEDExport")
+   Spring.CreateDir("LuaUI/SEDExport")
+
+   local filename = getTimestampedFilename()
+   Spring.Echo("[SEDExport] Nazwa pliku: " .. filename)
+
+   Spring.Echo("[SEDExport] Proba otwarcia pliku do zapisu...")
+   local file = io.open(filename, "w")
+
+   if not file then
+      Spring.Echo("[SEDExport] ❌ NIE MOZNA OTWORZYC PLIKU do zapisu")
+      Spring.Echo("[SEDExport] Mozliwe przyczyny:")
+      Spring.Echo(" - folder nie istnieje (CreateDir zawiodl?)")
+      Spring.Echo(" - brak uprawnień do zapisu")
+      Spring.Echo(" - LuaIO zablokowane w ustawieniach silnika")
+      return
+   else
+      Spring.Echo("[SEDExport] ✅ Plik otwarty pomyślnie!")
+   end
+   file:write("[GENERATED_BY_SEDEXPORT]")
+   local shortname = filename:match("([^/]+)%.txt$")
+   file:write(shortname .. "\n")
+   
+   Spring.Echo("[SEDExport] Zrzut jednostek...")
+   file:write("\n")
+   dumpUnits(file)
+   file:write("\n")
+
+   Spring.Echo("[SEDExport] Zrzut featureów...")
+   dumpFeatures(file)
+
+   file:close()
+   Spring.Echo("[SEDExport] ✅ Dane wyeksportowane do: " .. filename)
+end
+
+function widget:TextCommand(message)
+    local match = message:gmatch("%w+")
+    if match() == "SEDExport" then
+        SEDExport()
+    end
+end
+
+function widget:Initialize()
+   Spring.Echo("[SEDExport] Widget uruchomiony. Wpisz /SEDExport")
+end
+
+function widget:Shutdown()
+   Spring.Echo("[SEDExport] Widget wyłączony.")
+end
